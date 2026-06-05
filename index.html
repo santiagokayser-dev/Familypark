@@ -20,7 +20,7 @@
   --blue:#4A9EFF;--blue-dim:rgba(74,158,255,0.12);
   --yellow:#F5B731;--yellow-dim:rgba(245,183,49,0.12);
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);height:100dvh;overflow:hidden;display:flex;flex-direction:column;padding-left:env(safe-area-inset-left,0);padding-right:env(safe-area-inset-right,0)}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 .screen{display:none;flex:1;overflow:hidden}
 .screen.active{display:flex;flex-direction:column}
@@ -67,7 +67,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .avatar-circle:hover .avatar-hover{opacity:1}
 
 /* ── APP HEADER ── */
-.app-header{background:var(--s1);border-bottom:1px solid var(--border);padding:0 14px;height:50px;display:flex;align-items:center;gap:10px;flex-shrink:0;z-index:100}
+.app-header{background:var(--s1);border-bottom:1px solid var(--border);padding:env(safe-area-inset-top,0px) 14px 0;min-height:50px;height:calc(50px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:10px;flex-shrink:0;z-index:100}
 .app-logo{font-weight:900;font-size:15px;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .group-sel{flex:1;max-width:200px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:5px 9px;color:var(--ink);font-family:inherit;font-size:13px;appearance:none;cursor:pointer}
 .group-sel:focus{outline:none;border-color:var(--red)}
@@ -137,7 +137,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .tt-meta{color:var(--ink2);font-size:11px}
 
 /* ── PROFILE DROPDOWN ── */
-.pdrop{position:absolute;top:50px;right:12px;width:230px;background:var(--s1);border:1px solid var(--border2);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:500;overflow:hidden}
+.pdrop{position:absolute;top:calc(50px + env(safe-area-inset-top,0px));right:12px;width:230px;background:var(--s1);border:1px solid var(--border2);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:500;overflow:hidden}
 .pdrop.hide{display:none}
 .pd-head{padding:13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
 .pd-av{width:38px;height:38px;border-radius:50%;background:var(--s3);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
@@ -831,7 +831,7 @@ function showCode(){
   var g = activeGroup(); if(!g) return;
   document.getElementById('codeVal').textContent = g.code;
   document.getElementById('mCodeUser').value = '';
-  var base = window.location.origin + window.location.pathname;
+  var base = window.location.origin + window.location.pathname.replace(/\/$/,'');
   var link = base + '?invite=' + encodeURIComponent(g.code);
   document.getElementById('inviteLinkInput').value = link;
   openModal('mCode');
@@ -875,54 +875,76 @@ function addByUser(){
 
 function autoJoinFromInvite(code){
   code = code.toUpperCase();
-  db.collection('groups').where('code','==',code).get().then(function(snap){
-    if(snap.empty){ toast('El link de invitacion no es valido','err'); return; }
-    var gid = snap.docs[0].id;
-    var gdata = snap.docs[0].data();
-    if((gdata.members||[]).indexOf(CU.id)>=0){
-      // Already member — just switch to that group
-      ST.gid = gid;
-      renderGroupSelect();
-      subscribeSpots(gid);
-      hideNogroupOverlay();
-      toast('Ya sos parte de "'+gdata.name+'"','ok');
-      // Clean URL
+  joinByCode(code,
+    function(doc){
+      var gid=doc.id, gdata=doc.data();
       window.history.replaceState({}, '', window.location.pathname);
-      return;
-    }
-    db.collection('groups').doc(gid).update({
-      members: firebase.firestore.FieldValue.arrayUnion(CU.id)
-    }).then(function(){
-      toast('Te uniste a "'+gdata.name+'"! Bienvenido 🎉','ok');
-      hideNogroupOverlay();
-      // Clean URL so refreshing doesn't try to join again
-      window.history.replaceState({}, '', window.location.pathname);
-      loadGroups().then(function(){
-        // Switch to the joined group
-        var joined = groups.find(function(g){ return g.id===gid; });
-        if(joined){ ST.gid=gid; renderGroupSelect(); subscribeSpots(gid); }
+      if((gdata.members||[]).indexOf(CU.id)>=0){
+        ST.gid=gid; renderGroupSelect(); subscribeSpots(gid); hideNogroupOverlay();
+        toast('Ya sos parte de "'+gdata.name+'"','ok');
+        return;
+      }
+      db.collection('groups').doc(gid).update({
+        members: firebase.firestore.FieldValue.arrayUnion(CU.id)
+      }).then(function(){
+        toast('Te uniste a "'+gdata.name+'"! 🎉','ok');
+        hideNogroupOverlay();
+        loadGroups().then(function(){
+          var joined=groups.find(function(g){ return g.id===gid; });
+          if(joined){ ST.gid=gid; renderGroupSelect(); subscribeSpots(gid); }
+        });
       });
+    },
+    function(msg){ toast(msg,'err'); }
+  );
+}
+
+function joinByCode(code, onSuccess, onError){
+  // Query by code field — needs Firestore index.
+  // Fallback: scan all public groups (works without index for small datasets)
+  db.collection('groups').where('code','==',code).get()
+    .then(function(snap){
+      if(!snap.empty){ onSuccess(snap.docs[0]); return; }
+      // Fallback: index not ready yet, scan and filter client-side
+      db.collection('groups').get().then(function(all){
+        var found = null;
+        all.forEach(function(doc){ if(doc.data().code===code) found=doc; });
+        if(found) onSuccess(found);
+        else onError('Codigo invalido');
+      });
+    })
+    .catch(function(){
+      // Index error — fall back to full scan
+      db.collection('groups').get().then(function(all){
+        var found = null;
+        all.forEach(function(doc){ if(doc.data().code===code) found=doc; });
+        if(found) onSuccess(found);
+        else onError('Codigo invalido');
+      }).catch(function(e){ onError('Error: '+e.message); });
     });
-  }).catch(function(e){ toast('Error al procesar invitacion: '+e.message,'err'); });
 }
 
 function confirmJoin(){
   var code = document.getElementById('mJoinCode').value.trim().toUpperCase();
   if(!code){ toast('Ingresa un codigo','err'); return; }
-  db.collection('groups').where('code','==',code).get().then(function(snap){
-    if(snap.empty){ toast('Codigo invalido','err'); return; }
-    var gid = snap.docs[0].id;
-    var gdata = snap.docs[0].data();
-    if((gdata.members||[]).indexOf(CU.id)>=0){ toast('Ya sos parte del grupo','err'); return; }
-    db.collection('groups').doc(gid).update({
-      members: firebase.firestore.FieldValue.arrayUnion(CU.id)
-    }).then(function(){
-      toast('Te uniste a "'+gdata.name+'"','ok');
-      closeModal('mJoin');
-      window.history.replaceState({}, '', window.location.pathname);
-      loadGroups();
-    });
-  }).catch(function(e){ toast('Error: '+e.message,'err'); });
+  var btn = document.querySelector('#mJoin .btn-ok');
+  btn.disabled = true; btn.textContent = '...';
+  joinByCode(code,
+    function(doc){
+      btn.disabled=false; btn.textContent='Unirme';
+      var gid=doc.id, gdata=doc.data();
+      if((gdata.members||[]).indexOf(CU.id)>=0){ toast('Ya sos parte del grupo','err'); return; }
+      db.collection('groups').doc(gid).update({
+        members: firebase.firestore.FieldValue.arrayUnion(CU.id)
+      }).then(function(){
+        toast('Te uniste a "'+gdata.name+'"','ok');
+        closeModal('mJoin');
+        window.history.replaceState({}, '', window.location.pathname);
+        loadGroups();
+      });
+    },
+    function(msg){ btn.disabled=false; btn.textContent='Unirme'; toast(msg,'err'); }
+  );
 }
 
 // ══════════════════════════════════════════
