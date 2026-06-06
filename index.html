@@ -1318,32 +1318,35 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 
 // ── Mouse drag ────────────────────────────────────────────────────────────
-// Strategy: on mousedown, record the world-space coord under the cursor.
-// On mousemove, adjust VP so that same world coord is still under the cursor.
-// This is mathematically exact and never drifts.
+// Correct approach: snapshot VP center in world-space at drag start,
+// then on every move compute offset from START position (not from last frame).
+// This eliminates drift completely regardless of zoom changes between gestures.
 canvas.addEventListener('mousedown', function (e) {
   if (ST.pin) return;
-  var r  = canvas.getBoundingClientRect();
-  var px = e.clientX - r.left;
-  var py = e.clientY - r.top;
-  var ll = unproj(px, py); // world coord under cursor at drag start
-  drag = { clientX: e.clientX, clientY: e.clientY, anchorLat: ll.lat, anchorLng: ll.lng };
+  var r = canvas.getBoundingClientRect();
+  // Store: start mouse pixel AND the VP world-center at that moment
+  drag = {
+    startX:   e.clientX - r.left,
+    startY:   e.clientY - r.top,
+    startWX:  ll2world(VP.lat, VP.lng, VP.z).x,  // VP center in world-px at drag start
+    startWY:  ll2world(VP.lat, VP.lng, VP.z).y
+  };
 });
 
 canvas.addEventListener('mousemove', function (e) {
   if (drag) {
-    // We want the anchor lat/lng to stay under the current cursor position.
-    // So: project anchorLat/Lng to canvas, find the offset vs current cursor, shift VP.
     var r   = canvas.getBoundingClientRect();
     var cpx = e.clientX - r.left;
     var cpy = e.clientY - r.top;
-    // Where would the anchor appear right now (given current VP)?
-    var cur = proj(drag.anchorLat, drag.anchorLng);
-    // Shift VP so anchor lands exactly under cursor
-    var dxWorld = (cpx - cur.x) / TS;
-    var dyWorld = (cpy - cur.y) / TS;
-    var cw = ll2world(VP.lat, VP.lng, VP.z);
-    var newW = world2ll(cw.x - dxWorld, cw.y - dyWorld, VP.z);
+    // Delta in pixels from drag start
+    var dpx = cpx - drag.startX;
+    var dpy = cpy - drag.startY;
+    // Convert pixel delta to world-tile delta at current zoom
+    var newW = world2ll(
+      drag.startWX - dpx / TS,
+      drag.startWY - dpy / TS,
+      VP.z
+    );
     VP.lat = newW.lat;
     VP.lng = newW.lng;
     requestDraw();
@@ -1351,7 +1354,7 @@ canvas.addEventListener('mousemove', function (e) {
   hoverCheck(e.clientX, e.clientY);
 });
 
-canvas.addEventListener('mouseup',    function () { drag = null; });
+canvas.addEventListener('mouseup', function () { drag = null; });
 canvas.addEventListener('mouseleave', function () { drag = null; hideTooltip(); });
 
 canvas.addEventListener('wheel', function (e) {
@@ -1359,64 +1362,109 @@ canvas.addEventListener('wheel', function (e) {
   var delta = e.deltaY > 0 ? -1 : 1;
   var newZ  = Math.max(3, Math.min(19, VP.z + delta));
   if (newZ === VP.z) return;
-  // Zoom toward the cursor: find world coord under cursor, change zoom, re-center
-  var r   = canvas.getBoundingClientRect();
-  var px  = e.clientX - r.left;
-  var py  = e.clientY - r.top;
-  var ll  = unproj(px, py);        // coord under cursor before zoom
-  VP.z    = newZ;
-  // After zoom, that coord has moved — shift VP to put it back under cursor
-  var cur = proj(ll.lat, ll.lng);  // where it ended up
-  var cw  = ll2world(VP.lat, VP.lng, VP.z);
-  var dxW = (px - cur.x) / TS;
-  var dyW = (py - cur.y) / TS;
-  var nw  = world2ll(cw.x - dxW, cw.y - dyW, VP.z);
-  VP.lat  = nw.lat;
-  VP.lng  = nw.lng;
+  var r  = canvas.getBoundingClientRect();
+  var px = e.clientX - r.left;
+  var py = e.clientY - r.top;
+  // Geo coord currently under cursor
+  var ll = unproj(px, py);
+  // Change zoom
+  VP.z = newZ;
+  // Recompute VP center so that ll stays under cursor
+  // ll should be at pixel (px, py):
+  // proj(ll) = (ll_wx - vp_wx) * TS + W/2 = px  =>  vp_wx = ll_wx - (px - W/2)/TS
+  var llW = ll2world(ll.lat, ll.lng, VP.z);
+  var newVP = world2ll(
+    llW.x - (px - canvas.width  / 2) / TS,
+    llW.y - (py - canvas.height / 2) / TS,
+    VP.z
+  );
+  VP.lat = newVP.lat;
+  VP.lng = newVP.lng;
+  // Reset any active drag anchor since zoom changed
+  drag = null;
   requestDraw();
 }, { passive: false });
 
 // ── Touch drag & pinch ────────────────────────────────────────────────────
 canvas.addEventListener('touchstart', function (e) {
-  if (e.touches.length === 1) {
-    var r   = canvas.getBoundingClientRect();
-    var px  = e.touches[0].clientX - r.left;
-    var py  = e.touches[0].clientY - r.top;
-    var ll  = unproj(px, py);
-    lt = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, anchorLat: ll.lat, anchorLng: ll.lng };
-    pd = null;
+  if (e.touches.length === 1 && !pd) {
+    var r = canvas.getBoundingClientRect();
+    lt = {
+      startX:  e.touches[0].clientX - r.left,
+      startY:  e.touches[0].clientY - r.top,
+      startWX: ll2world(VP.lat, VP.lng, VP.z).x,
+      startWY: ll2world(VP.lat, VP.lng, VP.z).y
+    };
   } else if (e.touches.length === 2) {
-    pd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     lt = null;
+    pd = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    // Midpoint of pinch in geo coords — keep it fixed during pinch
+    var r    = canvas.getBoundingClientRect();
+    var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+    var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+    var midLL = unproj(midX, midY);
+    pd = { dist: pd, midLat: midLL.lat, midLng: midLL.lng, midPx: midX, midPy: midY };
   }
 }, { passive: true });
 
 canvas.addEventListener('touchmove', function (e) {
   e.preventDefault();
-  if (e.touches.length === 1 && lt) {
+  if (e.touches.length === 1 && lt && !pd) {
     var r   = canvas.getBoundingClientRect();
     var cpx = e.touches[0].clientX - r.left;
     var cpy = e.touches[0].clientY - r.top;
-    var cur = proj(lt.anchorLat, lt.anchorLng);
-    var dxW = (cpx - cur.x) / TS;
-    var dyW = (cpy - cur.y) / TS;
-    var cw  = ll2world(VP.lat, VP.lng, VP.z);
-    var nw  = world2ll(cw.x - dxW, cw.y - dyW, VP.z);
+    var dpx = cpx - lt.startX;
+    var dpy = cpy - lt.startY;
+    var nw  = world2ll(lt.startWX - dpx / TS, lt.startWY - dpy / TS, VP.z);
     VP.lat  = nw.lat;
     VP.lng  = nw.lng;
     requestDraw();
-  } else if (e.touches.length === 2 && pd !== null) {
-    var d    = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    var diff = Math.round(Math.log2(d / pd));
-    if (diff !== 0) {
-      VP.z = Math.max(3, Math.min(19, VP.z + diff));
-      pd   = d;
-      requestDraw();
+  } else if (e.touches.length === 2 && pd) {
+    var d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    var ratio = d / pd.dist;
+    var steps = Math.round(Math.log2(ratio));
+    if (steps !== 0) {
+      var newZ = Math.max(3, Math.min(19, VP.z + steps));
+      if (newZ !== VP.z) {
+        // Keep pinch midpoint fixed
+        VP.z = newZ;
+        var llW = ll2world(pd.midLat, pd.midLng, VP.z);
+        var nw  = world2ll(
+          llW.x - (pd.midPx - canvas.width  / 2) / TS,
+          llW.y - (pd.midPy - canvas.height / 2) / TS,
+          VP.z
+        );
+        VP.lat  = nw.lat;
+        VP.lng  = nw.lng;
+        pd.dist = d;
+        // Reset drag anchor after zoom
+        lt = null;
+        requestDraw();
+      }
     }
   }
 }, { passive: false });
 
-canvas.addEventListener('touchend', function () { lt = null; pd = null; });
+canvas.addEventListener('touchend', function (e) {
+  if (e.touches.length === 0) { lt = null; pd = null; }
+  else if (e.touches.length === 1) {
+    // Finger lifted during pinch — restart single-touch drag
+    pd = null;
+    var r = canvas.getBoundingClientRect();
+    lt = {
+      startX:  e.touches[0].clientX - r.left,
+      startY:  e.touches[0].clientY - r.top,
+      startWX: ll2world(VP.lat, VP.lng, VP.z).x,
+      startWY: ll2world(VP.lat, VP.lng, VP.z).y
+    };
+  }
+});
 
 // ── Click ─────────────────────────────────────────────────────────────────
 canvas.addEventListener('click', function (e) {
