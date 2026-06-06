@@ -191,10 +191,120 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   .map-wrap{height:56vh}
   .fab{bottom:calc(44vh + 13px)}
 }
+
+/* ── THEME ── */
+@media(prefers-color-scheme:light){
+  :root{
+    --bg:#F2F2F7;--s1:#FFFFFF;--s2:#F2F2F7;--s3:#E5E5EA;
+    --border:#D1D1D6;--border2:#C7C7CC;
+    --ink:#1C1C1E;--ink2:#6C6C70;--ink3:#AEAEB2;
+  }
+  #mapCanvas{filter:brightness(.92) contrast(1.05)}
+}
+
+/* ── ONBOARDING ── */
+.onb-wrap{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+.onb-slides{display:flex;flex:1;overflow:hidden}
+.onb-slide{min-width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;text-align:center;transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.onb-icon{font-size:72px;margin-bottom:24px;animation:bounce 2s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.onb-title{font-size:24px;font-weight:900;letter-spacing:-.5px;margin-bottom:12px;color:var(--ink)}
+.onb-desc{font-size:15px;color:var(--ink2);line-height:1.6;max-width:300px}
+.onb-footer{padding:24px 32px 40px;display:flex;flex-direction:column;gap:12px;flex-shrink:0}
+.onb-dots{display:flex;justify-content:center;gap:7px;margin-bottom:4px}
+.onb-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);transition:all .25s}
+.onb-dot.on{width:22px;border-radius:4px;background:var(--red)}
+.onb-btn{width:100%;padding:14px;background:var(--red);color:#fff;border:none;border-radius:12px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer;transition:background .15s,transform .1s}
+.onb-btn:active{transform:scale(.97)}
+.onb-btn:hover{background:#e03a20}
+.onb-skip{background:none;border:none;color:var(--ink2);font-family:inherit;font-size:13px;cursor:pointer;padding:4px}
+
+/* ── SCREEN TRANSITIONS ── */
+.screen{transition:opacity .2s ease}
+.screen.fade-out{opacity:0}
+
+/* ── CONFIRM DIALOG ── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3000;display:flex;align-items:flex-end;justify-content:center;padding:0 0 env(safe-area-inset-bottom,20px);backdrop-filter:blur(6px);transition:opacity .2s}
+.confirm-overlay.hide{display:none}
+.confirm-sheet{background:var(--s1);border-radius:20px 20px 0 0;padding:20px 20px calc(16px + env(safe-area-inset-bottom,0px));width:100%;max-width:480px;animation:slideUp .25s cubic-bezier(.4,0,.2,1)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.confirm-title{font-weight:700;font-size:16px;text-align:center;margin-bottom:6px}
+.confirm-sub{font-size:13px;color:var(--ink2);text-align:center;margin-bottom:18px}
+.confirm-btn-del{width:100%;padding:13px;background:rgba(255,59,48,.12);color:#FF3B30;border:none;border-radius:12px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer;margin-bottom:10px}
+.confirm-btn-cancel{width:100%;padding:13px;background:var(--s2);color:var(--ink);border:none;border-radius:12px;font-family:inherit;font-weight:600;font-size:15px;cursor:pointer}
+
+/* ── CONTEXTUAL HINTS ── */
+.hint-bubble{position:absolute;z-index:400;background:var(--red);color:#fff;border-radius:12px;padding:9px 14px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 4px 16px rgba(255,77,46,.4);pointer-events:none;animation:hintPop .3s cubic-bezier(.34,1.56,.64,1)}
+.hint-bubble::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);border:7px solid transparent;border-bottom:none;border-top-color:var(--red)}
+@keyframes hintPop{from{opacity:0;transform:scale(.8) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.hint-bubble.hint-up::after{bottom:auto;top:-7px;border-top:none;border-bottom-color:var(--red)}
+
+/* ── PIN APPEAR ANIMATION ── */
+@keyframes pinDrop{0%{transform:translateY(-30px) scale(.6);opacity:0}70%{transform:translateY(4px) scale(1.05)}100%{transform:translateY(0) scale(1);opacity:1}}
+
+/* ── CARD FLASH ── */
+@keyframes flashGreen{0%,100%{background:var(--s2)}50%{background:rgba(52,201,122,.18)}}
+.card-flash{animation:flashGreen .6s ease}
+
+/* ── OFFLINE BANNER ── */
+.offline-bar{background:#FF3B30;color:#fff;text-align:center;font-size:12px;font-weight:600;padding:6px;display:none;flex-shrink:0}
+.offline-bar.show{display:block}
+
+/* ── EMPTY STATES ── */
+.empty-state-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.empty-state-art{font-size:56px;margin-bottom:16px}
+.empty-state-title{font-size:17px;font-weight:800;margin-bottom:8px}
+.empty-state-desc{font-size:13px;color:var(--ink2);line-height:1.6;max-width:240px;margin-bottom:20px}
+.empty-state-btn{padding:11px 22px;background:var(--red);color:#fff;border:none;border-radius:10px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer}
 </style>
 </head>
 <body>
 <div class="toasts" id="toasts"></div>
+
+<!-- OFFLINE BAR -->
+<div class="offline-bar" id="offlineBar">Sin conexion — mostrando ultima ubicacion guardada</div>
+
+<!-- ONBOARDING SCREEN -->
+<div class="screen" id="sOnboarding">
+  <div class="onb-wrap">
+    <div class="onb-slides" id="onbSlides">
+      <div class="onb-slide">
+        <div class="onb-icon">🚗</div>
+        <div class="onb-title">Siempre saben donde esta el auto</div>
+        <div class="onb-desc">Marca la ubicacion con un toque y toda tu familia la ve al instante en el mapa.</div>
+      </div>
+      <div class="onb-slide">
+        <div class="onb-icon">👨‍👩‍👧</div>
+        <div class="onb-title">Un grupo por familia</div>
+        <div class="onb-desc">Crea tu grupo familiar e invita a todos con un link. Cada miembro puede marcar y ver ubicaciones.</div>
+      </div>
+      <div class="onb-slide">
+        <div class="onb-icon">📍</div>
+        <div class="onb-title">Navega directo al auto</div>
+        <div class="onb-desc">Toca el pin y abre Google Maps con la ruta ya calculada. Nunca mas busques el auto en el estacionamiento.</div>
+      </div>
+    </div>
+    <div class="onb-footer">
+      <div class="onb-dots">
+        <div class="onb-dot on" id="dot0"></div>
+        <div class="onb-dot" id="dot1"></div>
+        <div class="onb-dot" id="dot2"></div>
+      </div>
+      <button class="onb-btn" id="onbBtn" onclick="onbNext()">Siguiente</button>
+      <button class="onb-skip" onclick="onbSkip()">Saltar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE SHEET -->
+<div class="confirm-overlay hide" id="confirmOverlay">
+  <div class="confirm-sheet">
+    <div class="confirm-title">Borrar ubicacion</div>
+    <div class="confirm-sub" id="confirmSub">Esta accion no se puede deshacer.</div>
+    <button class="confirm-btn-del" onclick="confirmDeleteYes()">Borrar</button>
+    <button class="confirm-btn-cancel" onclick="confirmDeleteNo()">Cancelar</button>
+  </div>
+</div>
 
 <!-- LOADING -->
 <div class="screen active" id="sLoading">
@@ -474,7 +584,7 @@ function show(id){
 //  AUTH STATE OBSERVER
 // ══════════════════════════════════════════
 auth.onAuthStateChanged(function(user){
-  if(!user){ show('sAuth'); return; }
+  if(!user){ showWithFade('sAuth'); return; }
   // Load profile from Firestore
   db.collection('users').doc(user.uid).get().then(function(doc){
     if(doc.exists && doc.data().username){
@@ -485,9 +595,9 @@ auth.onAuthStateChanged(function(user){
       CU = {id: user.uid, email: user.email, name: user.displayName||'', username:'', nick:'', av: user.photoURL||null};
       // Pre-fill name if Google login
       if(user.displayName) document.getElementById('inName').value = user.displayName;
-      show('sSetup');
+      showWithFade('sSetup');
     }
-  }).catch(function(){ show('sAuth'); });
+  }).catch(function(){ showWithFade('sAuth'); });
 });
 
 // ══════════════════════════════════════════
@@ -615,7 +725,7 @@ function doSetup(){
 //  ENTER APP
 // ══════════════════════════════════════════
 function enterApp(){
-  show('sApp');
+  showWithFade('sApp');
   updateUserUI();
   loadGroups().then(function(){
     if(INVITE_CODE){
@@ -694,11 +804,21 @@ function subscribeSpots(gid){
       .onSnapshot(function(snap){
         var g2 = groups.find(function(x){ return x.id===gid; });
         if(!g2) return;
+        var prevIds = (g2.spots||[]).map(function(s){return s.id;});
         g2.spots = [];
         snap.forEach(function(doc){ g2.spots.push(Object.assign({id:doc.id}, doc.data())); });
         renderSidebar();
         resizeCanvas();
         drawMap();
+        // Flash new cards
+        g2.spots.forEach(function(s){
+          if(prevIds.indexOf(s.id)<0){
+            setTimeout(function(){
+              var el=document.getElementById('card-'+s.id);
+              if(el){el.classList.add('card-flash');setTimeout(function(){el.classList.remove('card-flash');},600);}
+            },100);
+          }
+        });
       });
     renderSidebar();
     resizeCanvas();
@@ -728,7 +848,7 @@ function renderSidebar(){
   var spots = g.spots || [];
   var la = document.getElementById('listAutos');
   if(!spots.length){
-    la.innerHTML = '<div class="empty"><div class="empty-icon">🅿️</div><div class="empty-title">Sin autos registrados</div><div class="empty-desc">Toca 🚗 para marcar donde esta el auto</div></div>';
+    la.innerHTML = '<div class="empty-state-wrap"><div class="empty-state-art">🅿️</div><div class="empty-state-title">Nada por aca todavia</div><div class="empty-state-desc">Marca donde dejaste el auto y tu familia lo ve al instante.</div><button class="empty-state-btn" onclick="startPin()">📍 Marcar el auto ahora</button></div>';
   } else {
     la.innerHTML = spots.map(function(s){
       var ci = (g.cars||[]).indexOf(s.car);
@@ -1061,14 +1181,12 @@ function finishSave(lat, lng, spotId){
   closeModal('mSave');
   toast('Ubicacion guardada', 'ok');
   // Sidebar updates automatically via realtime listener
+  // Trigger pin drop animation
+  triggerPinAnimation(spotId);
 }
 
-function delSpot(id){
-  var g = activeGroup(); if(!g) return;
-  db.collection('groups').doc(g.id).collection('spots').doc(id).delete().then(function(){
-    if(ST.sid===id) ST.sid=null;
-    toast('Eliminado','ok');
-  });
+function delSpot(id, carName) {
+  askDeleteSpot(id, carName || 'auto');
 }
 
 function navTo(lat,lng){ window.open('https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng+'&travelmode=driving','_blank'); }
@@ -1259,10 +1377,22 @@ function drawPins() {
     var ci = (g.cars || []).indexOf(s.car);
     var c  = COLORS[ci >= 0 ? ci % COLORS.length : 0];
     var active = ST.sid === s.id;
-    var pw = 28, ph = 36; // pin width, total height
+    var pw = 28, ph = 36;
+
+    // Drop animation
+    var animT = animatingPins[s.id];
+    var offsetY = 0;
+    if (animT) {
+      var elapsed = Date.now() - animT;
+      var t = Math.min(elapsed / 400, 1);
+      // Ease out bounce
+      var bounce = t < 0.6 ? -28*(1-t/0.6) : 4*Math.sin((t-0.6)/0.4*Math.PI)*(1-t);
+      offsetY = bounce;
+    }
 
     // ── pin shape ──
     ctx.save();
+    ctx.translate(0, offsetY);
     ctx.shadowColor = 'rgba(0,0,0,.55)';
     ctx.shadowBlur  = active ? 16 : 8;
     ctx.shadowOffsetY = 3;
@@ -1304,6 +1434,7 @@ function drawPins() {
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
+    ctx.restore(); // end translate for animation
   });
 }
 
@@ -1598,6 +1729,156 @@ function toast(msg,type){
   var t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;
   document.getElementById('toasts').appendChild(t);
   setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(function(){t.remove();},300);},2500);
+}
+
+// ══════════════════════════════════════════
+//  THEME (auto light/dark)
+// ══════════════════════════════════════════
+var mq = window.matchMedia('(prefers-color-scheme: light)');
+mq.addEventListener('change', function() { requestDraw(); });
+
+// ══════════════════════════════════════════
+//  OFFLINE DETECTION
+// ══════════════════════════════════════════
+function updateOnlineStatus() {
+  var bar = document.getElementById('offlineBar');
+  if (navigator.onLine) { bar.classList.remove('show'); }
+  else { bar.classList.add('show'); }
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// ══════════════════════════════════════════
+//  ONBOARDING
+// ══════════════════════════════════════════
+var onbStep = 0;
+var ONB_KEY = 'fp_onb_done';
+
+function shouldShowOnboarding() {
+  return !localStorage.getItem(ONB_KEY);
+}
+
+function onbNext() {
+  if (onbStep < 2) {
+    onbStep++;
+    updateOnbSlide();
+  } else {
+    onbSkip();
+  }
+}
+
+function onbSkip() {
+  localStorage.setItem(ONB_KEY, '1');
+  showWithFade('sAuth');
+}
+
+function updateOnbSlide() {
+  var slides = document.getElementById('onbSlides');
+  slides.style.transform = 'translateX(-' + (onbStep * 100) + '%)';
+  slides.style.transition = 'transform .35s cubic-bezier(.4,0,.2,1)';
+  for (var i = 0; i < 3; i++) {
+    document.getElementById('dot' + i).classList.toggle('on', i === onbStep);
+  }
+  document.getElementById('onbBtn').textContent = onbStep === 2 ? 'Empezar' : 'Siguiente';
+}
+
+// Swipe on onboarding
+(function() {
+  var startX = 0;
+  var el = document.getElementById('onbSlides');
+  if (!el) return;
+  el.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, {passive:true});
+  el.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].clientX - startX;
+    if (dx < -50 && onbStep < 2) { onbStep++; updateOnbSlide(); }
+    if (dx > 50  && onbStep > 0) { onbStep--; updateOnbSlide(); }
+  }, {passive:true});
+})();
+
+// ══════════════════════════════════════════
+//  CONFIRM DELETE
+// ══════════════════════════════════════════
+var pendingDeleteId = null;
+
+function askDeleteSpot(id, carName) {
+  pendingDeleteId = id;
+  document.getElementById('confirmSub').textContent = 'Se va a borrar la ubicacion del ' + carName + '. Esta accion no se puede deshacer.';
+  document.getElementById('confirmOverlay').classList.remove('hide');
+}
+
+function confirmDeleteYes() {
+  if (!pendingDeleteId) return;
+  var id = pendingDeleteId;
+  pendingDeleteId = null;
+  document.getElementById('confirmOverlay').classList.add('hide');
+  var g = activeGroup(); if (!g) return;
+  db.collection('groups').doc(g.id).collection('spots').doc(id).delete().then(function() {
+    if (ST.sid === id) ST.sid = null;
+    toast('Ubicacion eliminada', 'ok');
+  });
+}
+
+function confirmDeleteNo() {
+  pendingDeleteId = null;
+  document.getElementById('confirmOverlay').classList.add('hide');
+}
+
+// ══════════════════════════════════════════
+//  CONTEXTUAL HINTS
+// ══════════════════════════════════════════
+var hintsShown = {};
+
+function showHint(text, targetEl, position) {
+  var key = text.slice(0, 20);
+  if (hintsShown[key] || localStorage.getItem('fp_hint_' + key)) return;
+  hintsShown[key] = true;
+  localStorage.setItem('fp_hint_' + key, '1');
+
+  var hint = document.createElement('div');
+  hint.className = 'hint-bubble' + (position === 'up' ? ' hint-up' : '');
+  hint.textContent = text;
+  document.body.appendChild(hint);
+
+  var rect = targetEl.getBoundingClientRect();
+  hint.style.left = (rect.left + rect.width / 2 - hint.offsetWidth / 2) + 'px';
+  if (position === 'up') {
+    hint.style.top = (rect.bottom + 12) + 'px';
+  } else {
+    hint.style.top = (rect.top - hint.offsetHeight - 14) + 'px';
+  }
+
+  setTimeout(function() {
+    hint.style.opacity = '0';
+    hint.style.transition = 'opacity .3s';
+    setTimeout(function() { hint.remove(); }, 300);
+  }, 3000);
+}
+
+// ══════════════════════════════════════════
+//  SCREEN TRANSITION
+// ══════════════════════════════════════════
+function showWithFade(id) {
+  var current = document.querySelector('.screen.active');
+  if (current) {
+    current.classList.add('fade-out');
+    setTimeout(function() {
+      current.classList.remove('active', 'fade-out');
+      document.getElementById(id).classList.add('active');
+    }, 180);
+  } else {
+    document.getElementById(id).classList.add('active');
+  }
+}
+
+// ══════════════════════════════════════════
+//  PIN DROP ANIMATION
+// ══════════════════════════════════════════
+var animatingPins = {};
+function triggerPinAnimation(spotId) {
+  animatingPins[spotId] = Date.now();
+  setTimeout(function() { delete animatingPins[spotId]; requestDraw(); }, 500);
+  requestDraw();
 }
 </script>
 </body>
